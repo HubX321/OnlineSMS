@@ -2,6 +2,7 @@ const express= require ('express');
 const cors = require ('cors');
 const pool = require ('./db');
 require ('dotenv').config();
+// app.use(express.json()); 
 
 const app = express();
 app.use(cors());
@@ -126,4 +127,73 @@ app.listen(PORT,()=>{
     console.log(`Connected Successfully...Running on PORT ${PORT}`);
 });
 
+// app.get('/:tableName', async (req, res) => {
+//   const { tableName } = req.params;
+//   try {
+//     const result = await pool.query(`SELECT * FROM ${tableName}`);
+//     res.json(result.rows);  // <-- seedha array bhej do
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 
+app.get('/:tableName', async (req, res) => {
+  const { tableName } = req.params;
+  try {
+    const result = await pool.query(`SELECT * FROM ${tableName}`);
+    const columns = result.fields.map(field => field.name);
+    res.json({
+      columns,
+      data: result.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.use(express.json()); // make sure this exists before your routes
+
+app.delete('/:table', async (req, res) => {
+  const { table } = req.params;
+  const { id } = req.body;
+
+  const allowedTables = ['products', 'customers', 'orders']; // whitelist your tables
+
+  if (!allowedTables.includes(table)) {
+    return res.status(400).json({ error: 'Invalid table name' });
+  }
+
+  if (!id) {
+    return res.status(400).json({ error: 'ID is required' });
+  }
+
+  try {
+    const result = await pool.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+
+    res.json({ message: 'Record deleted successfully' });
+  } catch (error) {
+    console.error('DELETE error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// app.get('/:tableName', async (req, res) => {
+//   const { tableName } = req.params;
+//   try {
+//     const result = await pool.query(`SELECT * FROM ${tableName}`);
+//     const columns = result.fields.map(field => field.name);
+//     res.json({
+//       columns,
+//       data: result.rows
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: err.message });
+//   }
+// });
