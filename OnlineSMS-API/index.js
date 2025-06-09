@@ -98,7 +98,7 @@ const result = await pool.query ('select * from products ')
 })
 
 
-app.get('/Reviewa',async(req,res)=>{
+app.get('/Reviews',async(req,res)=>{
     try{
 const result = await pool.query ('select * from reviews ')
         res.json(result.rows);
@@ -116,6 +116,7 @@ const result = await pool.query ('select * from shippers ')
         res.status(500).json({Error:err.message});
     }
 })
+
 
 
 
