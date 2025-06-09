@@ -5,7 +5,7 @@ const tablesData = {
         name: "Customers",
         icon: "👤",
         data: [
-            { customer_id: 101, first_name: "Raj", last_name: "Verma", email: "raj.verma@email.com", phone: "9123456780", address: "Kolkata", join_date: "2023-01-10" },
+            { customer_id: 101, first_name: "Rajasdasd", last_name: "Verma", email: "raj.verma@email.com", phone: "9123456780", address: "Kolkata", join_date: "2023-01-10" },
             { customer_id: 102, first_name: "Priya", last_name: "Sharma", email: "priya.sharma@mail.com", phone: "9876543210", address: "Delhi", join_date: "2023-01-15" },
             { customer_id: 103, first_name: "Amit", last_name: "Patel", email: "amit.patel@example.com", phone: "9765432109", address: "Mumbai", join_date: "2023-02-01" },
             { customer_id: 104, first_name: "Sneha", last_name: "Singh", email: "sneha.singh@web.com", phone: "9654321098", address: "Bangalore", join_date: "2023-02-10" },
@@ -275,79 +275,188 @@ const tablesData = {
     }
 };
 
-//jese hi WEB pg load ho ye func chl jaega
 window.onload = function () {
-// Cards dikhane wala function call hota hai
   showCards();
 };
 
-// Ye function cards banata hai
 function showCards() {
-
-    // HTML mein jis jagah cards dikhane hain, us element ko note kra
   var container = document.getElementById("tables-container");
-
-  //us jga ko khali krdia
   container.innerHTML = "";
 
-// Har ek table ke liye loop chalega (tablesData object ke andar jitne bhi keys hain
   for (var key in tablesData) {
-// Current table ka data le liya
-    var table = tablesData[key]; 
-
-
-    // Ek naya <div> element banaya
+    var table = tablesData[key];
     var div = document.createElement("div");
-
-    // Bootstrap classes diye (col-md-4 = 3 cards per row, mb-3 = bottom margin)
     div.className = "col-md-4 mb-3";
-
- // Card ka andar ka HTML banalia 
     div.innerHTML = `
       <div class="card">
         <div class="card-body text-center">
           <div style="font-size: 2.5rem;">${table.icon}</div>
           <h5>${table.name}</h5>
-
-           <!-- Kitne records hain us table mein -->
           <p>Total: ${table.data.length} records</p>
-
-            <!-- Button: Jab click ho toh table dikhaye -->
-          <button onclick="showTable('${key}')" class="btn btn-primary btn-sm">View Table</button>
-          
-
-           <!-- Button: Jab click ho toh new record add karne ka kaam ho (ye abhi define nahi hai) -->
-          <button onclick="addNewRecord('${key}')" class="btn btn-success btn-sm">Add Record</button>
+          <div class="d-flex g-4 justify-content-around">
+            <button onclick="showTable('${key}')" class="btn btn-primary btn-sm">View Table</button>
+            <button onclick="addNewRecord('${key}')" class="btn btn-success btn-sm">Add Record</button>
+          </div>
         </div>
       </div>
     `;
-
-   // Ye card container ke andar add kar diya
-    container.appendChild(div); 
+    container.appendChild(div);
   }
 }
 
-// Jab hum View Table= button pe click karein tu ye function chale
-function showTable(tableKey) {
+async function showTable(tableName) {
+  try {
+    const response = await fetch(`http://127.0.0.1:5002/${tableName}`);
+    const data = await response.json();
 
-    // Jo table select hua hai uska data le liya
-  var info = tablesData[tableKey];
-  // HTML mein jahan table dikhana hai, us jaga note kra 
-  var div = document.getElementById("table-section");
+    let rows = data;
+    if (data.data) rows = data.data;
 
-  // Table ka start aur header row ka start yhn se hoga
-  var html = "<table class='table table-bordered'><thead><tr>";
+    if (!rows.length) {
+      document.getElementById("table-section").innerHTML = "<p>No data available.</p>";
+      return;
+    }
 
-   // Har column name ke liye <th> banaya
-  for (var i = 0; i < info.columns.length; i++) {
-    html += "<th>" + info.columns[i] + "</th>";
+    const columns = Object.keys(rows[0]);
+
+    // Assume primary key wo column hoga jis mein 'id' shamil ho
+    let primaryKey = columns.find(col => col.toLowerCase().includes('id'));
+
+    if (!primaryKey) {
+      alert("Primary key (id) column nahi mila!");
+      return;
+    }
+
+    let html = "<table class='table table-bordered'><thead><tr>";
+    columns.forEach(col => {
+      html += `<th>${col}</th>`;
+    });
+    html += "<th>Actions</th></tr></thead><tbody>";
+
+    rows.forEach(row => {
+      html += "<tr>";
+      columns.forEach(col => {
+        html += `<td>${row[col] || ""}</td>`;
+      });
+
+      // Primary key ke naam se id pass karen
+      const recordId = row[primaryKey];
+      if (recordId === undefined) {
+        html += `<td><em>ID missing!</em></td>`;
+      } else {
+        html += `<td><button onclick="deleteRecord('${tableName}', ${recordId})" class="btn btn-danger btn-sm">Delete</button></td>`;
+      }
+      html += "</tr>";
+    });
+
+    html += "</tbody></table>";
+
+    document.getElementById("table-section").innerHTML = html;
+
+    const myModal = new bootstrap.Modal(document.getElementById("dataModal"));
+    myModal.show();
+
+  } catch (error) {
+    console.error("Error fetching table data:", error);
+    alert("Failed to load table data.");
   }
-  html += "</tr></thead><tbody>";
-
-  html += "</tbody></table>";
-  div.innerHTML = html;
 }
 
 
 
+// Show form to add a new record inside the modal
+function showAddRecordForm(tableName) {
+  const container = document.getElementById("table-section");
+
+  // Simple form with inputs for each column (except id assuming serial)
+  // For simplicity, ask user to enter JSON object (can be improved)
+  container.innerHTML = `
+    <h5>Add new record to ${tableName}</h5>
+    <textarea id="newRecordData" class="form-control" rows="5" placeholder='Enter JSON data like {"column1": "value1", "column2": "value2"}'></textarea>
+    <div class="mt-3">
+      <button class="btn btn-primary" onclick="addRecord('${tableName}')">Save</button>
+      <button class="btn btn-secondary" onclick="showTable('${tableName}')">Cancel</button>
+    </div>
+  `;
+}
+
+// Add record API call
+async function addRecord(tableName) {
+  try {
+    const rawData = document.getElementById("newRecordData").value;
+    if (!rawData) return alert("Please enter data.");
+
+    let recordData;
+    try {
+      recordData = JSON.parse(rawData);
+    } catch {
+      return alert("Invalid JSON format.");
+    }
+
+    // Send POST request to backend (you must create this endpoint)
+    const response = await fetch(`http://127.0.0.1:5002/${tableName}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(recordData),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || "Failed to add record.");
+    }
+
+    alert("Record added successfully!");
+    showTable(tableName);  // reload table view
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function deleteRecord(tableName, id) {
+  if (!confirm("Are you sure you want to delete this record?")) return;
+
+  fetch(`http://127.0.0.1:5002/${tableName}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id })
+  })
+    .then(res => res.json())
+    .then(data => {
+      alert("Record deleted!");
+      showTable(tableName);
+    })
+    .catch(err => {
+      console.error("Error deleting record:", err);
+      alert("Failed to delete record.");
+    });
+}
+
+// Delete record API call
+// async function deleteRecord(tableName, id) {
+//   if (!id) {
+//     alert("Record ID missing!");
+//     return;
+//   }
+
+//   const confirmDelete = confirm(`Are you sure you want to delete record ${id} from ${tableName}?`);
+//   if (!confirmDelete) return;
+
+//   try {
+//     const response = await fetch(`http://127.0.0.1:5002/${tableName}/${id}`, {
+//       method: 'DELETE',
+//     });
+
+//     if (!response.ok) {
+//       const errorData = await response.json();
+//       throw new Error(errorData.error || 'Failed to delete record');
+//     }
+
+//     alert("Record deleted successfully!");
+//     showTable(tableName);  // refresh table after deletion
+//   } catch (error) {
+//     console.error(error);
+//     alert(`Error deleting record: ${error.message}`);
+//   }
+// }
 

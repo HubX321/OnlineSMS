@@ -18,3 +18,7 @@
 #chartContainer {
     height: 400px;
 }
+.modal .modal-body{
+    max-height: 80vh;
+    overflow-y: auto;
+}
